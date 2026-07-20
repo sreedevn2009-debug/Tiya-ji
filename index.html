@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1330">
+<title>For Tiya 💗</title>
+<style>
+  :root { color-scheme: light; }
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none;
+      -webkit-tap-highlight-color:transparent; touch-action:none; }
+  html,body { height:100%; background:#1a1330; font-family:'Segoe UI','Comic Sans MS',cursive,sans-serif;
+      overflow:hidden; position:fixed; inset:0; width:100%; overscroll-behavior:none; }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      background:radial-gradient(circle at 50% 30%, #2c1f52 0%, #140d26 80%); }
+  #stage { position:relative; width:420px; height:640px; flex:none; transform-origin:center center; }
+  canvas { position:absolute; inset:0; width:100%; height:100%; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.55); }
+  .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; border-radius:14px; }
+  .hidden { display:none !important; }
+
+  /* ---------- MENU ---------- */
+  #menu { background: linear-gradient(160deg,#ffd6e8 0%,#ffb3d1 40%,#c9a7ff 100%); gap:16px; }
+  #menu h1 { font-size:34px; color:#8b1e5b; text-shadow:0 2px 0 #fff; animation:bob 2s ease-in-out infinite; }
+  #menu .heart { font-size:44px; animation:beat 1s infinite; }
+  @keyframes beat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  .btn { border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:22px;
+         padding:18px 54px; border-radius:44px; color:#fff; letter-spacing:1px;
+         box-shadow:0 6px 0 rgba(0,0,0,.18); transition:transform .1s; }
+  .btn:active { transform:translateY(4px); box-shadow:0 2px 0 rgba(0,0,0,.18); }
+  #playBtn { background:linear-gradient(180deg,#ff5fa2,#e83e8c); }
+  #quitBtn { background:linear-gradient(180deg,#a78bfa,#7c5cd6); font-size:17px; padding:13px 40px; }
+  #tagline { margin-top:10px; font-size:19px; font-style:italic; color:#7a2a63; background:#fff8; padding:9px 20px; border-radius:22px; }
+  #hint { font-size:13px; color:#7a2a63; opacity:.75; }
+
+  /* ---------- HUD ---------- */
+  #hud { position:absolute; top:14px; left:0; right:0; text-align:center; font-size:28px; font-weight:800;
+         color:#fff; text-shadow:0 2px 4px rgba(0,0,0,.4); pointer-events:none; }
+
+  /* ---------- Speech / poem ---------- */
+  #speech { position:absolute; left:50%; transform:translateX(-50%); bottom:210px; width:90%;
+            background:#fff; border-radius:16px; padding:14px 16px; font-size:15.5px; color:#5a2340;
+            box-shadow:0 8px 24px rgba(0,0,0,.3); line-height:1.5; text-align:center; }
+  #speech:after { content:''; position:absolute; bottom:-12px; left:50%; transform:translateX(-50%);
+            border:12px solid transparent; border-top-color:#fff; border-bottom:none; }
+  #speech .big { font-size:20px; font-weight:800; color:#e83e8c; }
+
+  /* ---------- Choice buttons ---------- */
+  #choice { position:absolute; bottom:34px; left:0; right:0; display:flex; gap:12px; justify-content:center; }
+  #forgiveBtn { background:linear-gradient(180deg,#34d399,#0ea86f); }
+  #noBtn { background:linear-gradient(180deg,#f87171,#dc2f45); }
+  #choice .btn { font-size:17px; padding:16px 20px; }
+
+  /* ---------- Popup ---------- */
+  #popup { background:rgba(20,10,30,.55); }
+  #popup .card { background:#fff; border-radius:20px; padding:28px 24px; width:84%;
+                 box-shadow:0 20px 60px rgba(0,0,0,.4); animation:pop .3s ease; }
+  @keyframes pop { from{transform:scale(.6); opacity:0} to{transform:scale(1); opacity:1} }
+  #popup .card .e { font-size:48px; }
+  #popup .card p { font-size:20px; color:#8b1e5b; font-weight:700; margin:12px 0 18px; line-height:1.4; }
+  #okBtn { background:linear-gradient(180deg,#ff9ecb,#e83e8c); font-size:17px; padding:13px 34px; }
+
+  #toast { position:absolute; top:46%; left:50%; transform:translate(-50%,-50%); background:#fffdf5;
+           color:#7a2a63; font-weight:700; font-size:17px; padding:14px 22px; border-radius:16px;
+           box-shadow:0 10px 30px rgba(0,0,0,.35); animation:pop .3s ease; text-align:center; width:82%; }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <canvas id="cv" width="420" height="640"></canvas>
+  <div id="hud" class="hidden"></div>
+
+  <div id="menu" class="overlay">
+    <div class="heart">💗</div>
+    <h1>Hello TIYA GUPTA</h1>
+    <button class="btn" id="playBtn">▶ &nbsp;PLAY</button>
+    <button class="btn" id="quitBtn">✖ &nbsp;QUIT</button>
+    <div id="tagline">forgive sreedev easily 🥺</div>
+    <div id="hint">tap anywhere to make the birdie fly!</div>
+  </div>
+
+  <div id="speech" class="hidden"></div>
+
+  <div id="choice" class="hidden">
+    <button class="btn" id="forgiveBtn">Forgive him 💖</button>
+    <button class="btn" id="noBtn">Don't forgive him 😤</button>
+  </div>
+
+  <div id="popup" class="overlay hidden">
+    <div class="card">
+      <div class="e">🥺🙏</div>
+      <p>Please forgive him…<br>he is a pure soul 💗</p>
+      <button class="btn" id="okBtn">Okay fine…</button>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+</div></div>
+
+<script>
+"use strict";
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = 420, H = 640;
+const $ = id => document.getElementById(id);
+
+/* =============== PHONE FIT: scale stage to fill screen =============== */
+const stage = $('stage');
+function fit(){
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const s = Math.min(vw / W, vh / H);
+  stage.style.transform = 'scale(' + s + ')';
+}
+window.addEventListener('resize', fit);
+window.addEventListener('orientationchange', ()=> setTimeout(fit, 250));
+fit();
+
+/* block iOS rubber-band scroll & double-tap zoom */
+document.addEventListener('touchmove', e => e.preventDefault(), { passive:false });
+let lastTouch = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTouch < 350) e.preventDefault();
+  lastTouch = now;
+}, { passive:false });
+
+/* =============== AUDIO (Web Audio API) =============== */
+let AC = null, bgGain = null, bgTimer = null;
+function audioInit(){
+  if (AC) return;
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  bgGain = AC.createGain(); bgGain.gain.value = 0.16; bgGain.connect(AC.destination);
+}
+/* iOS: unlock audio on first touch */
+document.addEventListener('touchstart', function unlock(){
+  audioInit(); if (AC.state === 'suspended') AC.resume();
+}, { once:true });
+
+function note(freq, t, dur, type='triangle', vol=1, dest){
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(dest || bgGain);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+const N = {C4:261.6,D4:293.7,E4:329.6,F4:349.2,G4:392,A4:440,B4:493.9,
+           C5:523.3,D5:587.3,E5:659.3,F5:698.5,G5:784,A5:880,B5:987.8,C6:1046.5};
+const MELODY = [
+ ['E5',.5],['G5',.5],['A5',1],['G5',.5],['E5',.5],['C5',1],
+ ['D5',.5],['E5',.5],['D5',.5],['C5',.5],['A4',1],['G4',1],
+ ['E5',.5],['G5',.5],['A5',1],['C6',.5],['B5',.5],['G5',1],
+ ['A5',.5],['G5',.5],['E5',.5],['D5',.5],['C5',2]
+];
+function startMelody(){
+  stopMelody();
+  const beat = 0.32;
+  const loopLen = MELODY.reduce((s,[,d])=>s+d,0) * beat;
+  const scheduleLoop = (t0) => {
+    let t = t0;
+    for (const [n,d] of MELODY){
+      note(N[n], t, d*beat*0.95, 'triangle', 0.9);
+      note(N[n]/2, t, d*beat*0.9, 'sine', 0.35);
+      t += d*beat;
+    }
+  };
+  let nextT = AC.currentTime + 0.1;
+  scheduleLoop(nextT); nextT += loopLen;
+  bgTimer = setInterval(()=>{
+    if (AC.currentTime > nextT - 0.5){ scheduleLoop(nextT); nextT += loopLen; }
+  }, 200);
+}
+function stopMelody(){ if (bgTimer){ clearInterval(bgTimer); bgTimer = null; } }
+function sfxFlap(){ if(!AC)return; const t=AC.currentTime; note(600,t,.08,'square',.25); note(880,t+.05,.08,'square',.2); }
+function sfxPoint(){ if(!AC)return; const t=AC.currentTime; note(N.C6,t,.12,'sine',.5); note(N.E5*2,t+.08,.15,'sine',.4); }
+function sfxHit(){ if(!AC)return; const t=AC.currentTime; note(160,t,.3,'sawtooth',.35); note(110,t+.1,.35,'sawtooth',.3); }
+function winMusic(){
+  if(!AC)return; stopMelody();
+  const t0 = AC.currentTime + 0.05, b = 0.17;
+  const seq = ['C5','E5','G5','C6','G5','C6','E5','G5','C6'];
+  seq.forEach((n,i)=> note(N[n], t0+i*b, b*1.6, 'triangle', .9));
+  ['C5','E5','G5','C6'].forEach(n => note(N[n], t0+seq.length*b, 1.6, 'triangle', .8));
+  setTimeout(()=>{ if(state==='fireworks'||state==='mario'||state==='blush'||state==='choice') startMelody(); }, 3400);
+}
+function danceMusic(){
+  if(!AC) return; stopMelody();
+  const beat = 0.21;
+  const tune = ['E5','E5',0,'E5',0,'C5','E5',0,'G5',0,0,0,'G4',0,0,0,
+                'C5',0,0,'G4',0,0,'E4',0,0,'A4',0,'B4',0,'A4',0,0];
+  const loopLen = tune.length * beat;
+  const sched = t0 => tune.forEach((n,i)=>{ if(n) note(N[n], t0+i*beat, beat*1.4, 'square', .5); });
+  let nextT = AC.currentTime + 0.05;
+  sched(nextT); nextT += loopLen;
+  bgTimer = setInterval(()=>{ if (AC.currentTime > nextT-0.5){ sched(nextT); nextT += loopLen; } },200);
+}
+
+/* =============== STATE =============== */
+let state = 'menu';
+let frames = 0;
+
+const bird = { x:100, y:300, vy:0, r:16, rot:0, wing:0, blush:false };
+const GRAV = 0.42, FLAP = -7.4;
+
+const PIPE_W = 64, GAP = 175, SPEED = 2.1, SPACING = 245, TOTAL = 6;
+let pipes = [], score = 0;
+
+let parts = [];
+
+const mario = { x: 250, y: 0, situp: 0, phase: 0, t: 0, dancing:false };
+let cutStep = 0, cutTimer = 0;
+let nightBg = false;
+
+/* =============== HELPERS =============== */
+function resetLevel(){
+  bird.y = 300; bird.vy = 0; bird.rot = 0; bird.blush = false;
+  pipes = []; score = 0; parts = [];
+  for (let i=0;i<TOTAL;i++){
+    const cy = 160 + Math.random()*(H-420);
+    pipes.push({ x: W + 160 + i*SPACING, cy, passed:false });
+  }
+  $('hud').textContent = '💛 0 / ' + TOTAL;
+}
+function flap(){
+  if (state === 'play'){ bird.vy = FLAP; sfxFlap(); }
+}
+function toast(msg, ms=1800){
+  const t = $('toast'); t.innerHTML = msg; t.classList.remove('hidden');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.add('hidden'), ms);
+}
+
+/* =============== INPUT =============== */
+function pressHandler(e){
+  if (e.target.closest('button')) return;
+  e.preventDefault();
+  if (state === 'play') flap();
+  else if (state === 'dead' && frames - deadAt > 40){ state='play'; resetLevel(); }
+}
+document.addEventListener('pointerdown', pressHandler);
+document.addEventListener('keydown', e=>{ if (e.code==='Space'){ e.preventDefault(); if(state==='play') flap(); }});
+
+$('playBtn').onclick = () => {
+  audioInit(); AC.resume && AC.resume();
+  startMelody();
+  $('menu').classList.add('hidden');
+  $('hud').classList.remove('hidden');
+  nightBg = false;
+  resetLevel();
+  state = 'play';
+  /* go fullscreen on phones that allow it */
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+};
+$('quitBtn').onclick = () => {
+  audioInit(); AC.resume && AC.resume();
+  toast("You can't quit! 💔<br>Sreedev's heart will break…<br>Just press PLAY 🥺", 2600);
+};
+$('noBtn').onclick = () => { $('popup').classList.remove('hidden'); };
+$('okBtn').onclick = () => { $('popup').classList.add('hidden'); toast('So… press the green one 😇💚', 1600); };
+$('forgiveBtn').onclick = () => {
+  $('choice').classList.add('hidden');
+  $('speech').classList.add('hidden');
+  mario.dancing = true; mario.t = 0;
+  danceMusic();
+  burstConfetti();
+  state = 'end';
+  cutTimer = 0;
+};
+
+/* =============== DRAWING =============== */
+function drawBackground(){
+  let g = ctx.createLinearGradient(0,0,0,H);
+  if (!nightBg){
+    g.addColorStop(0,'#7ec8ff'); g.addColorStop(.7,'#bfe6ff'); g.addColorStop(1,'#8fd694');
+  } else {
+    g.addColorStop(0,'#2b1a5e'); g.addColorStop(.6,'#7b3fa0'); g.addColorStop(1,'#ff8fb1');
+  }
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+  if (nightBg){
+    ctx.fillStyle = '#fff';
+    for (let i=0;i<40;i++){
+      const sx = (i*97)%W, sy = (i*57)%320;
+      const tw = 0.5 + 0.5*Math.sin(frames*0.05 + i);
+      ctx.globalAlpha = tw*0.9; ctx.fillRect(sx, sy, 2.2, 2.2);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff7d6'; ctx.beginPath(); ctx.arc(350,80,26,0,7); ctx.fill();
+  } else {
+    ctx.fillStyle = '#fff3ad'; ctx.beginPath(); ctx.arc(352,78,30,0,7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    cloud(60 - (frames*.2)%500 + 200, 90); cloud(300 - (frames*.15)%600 + 250, 160);
+  }
+  ctx.fillStyle = nightBg ? '#5a3a78' : '#6ab04c';
+  ctx.fillRect(0,H-70,W,70);
+  ctx.fillStyle = nightBg ? '#7c5296' : '#88cc66';
+  for (let i=0;i<14;i++){
+    const gx = ((i*40) - (state==='play'? (frames*SPEED)%40 : 0));
+    ctx.fillRect(gx, H-70, 20, 8);
+  }
+}
+function cloud(x,y){
+  ctx.beginPath();
+  ctx.arc(x,y,18,0,7); ctx.arc(x+20,y-10,22,0,7); ctx.arc(x+45,y,18,0,7);
+  ctx.fill();
+}
+function drawPipes(){
+  for (const p of pipes){
+    if (p.x > W + 80 || p.x < -PIPE_W-10) continue;
+    const top = p.cy - GAP/2, bot = p.cy + GAP/2;
+    ctx.fillStyle = '#2e9e44';
+    ctx.fillRect(p.x, 0, PIPE_W, top);
+    ctx.fillRect(p.x, bot, PIPE_W, H-70-bot);
+    ctx.fillStyle = '#37bf53';
+    ctx.fillRect(p.x+6, 0, 12, top); ctx.fillRect(p.x+6, bot, 12, H-70-bot);
+    ctx.fillStyle = '#27863a';
+    ctx.fillRect(p.x-5, top-26, PIPE_W+10, 26);
+    ctx.fillRect(p.x-5, bot, PIPE_W+10, 26);
+  }
+}
+function drawBird(){
+  ctx.save();
+  ctx.translate(bird.x, bird.y);
+  ctx.rotate(bird.rot);
+  ctx.fillStyle = '#ffd93d'; ctx.beginPath(); ctx.ellipse(0,0,18,15,0,0,7); ctx.fill();
+  const wy = Math.sin(bird.wing)*5;
+  ctx.fillStyle = '#ffb833'; ctx.beginPath(); ctx.ellipse(-4, 3+wy, 9, 6, -0.4, 0, 7); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(8,-5,6,0,7); ctx.fill();
+  ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(9.5,-5,2.8,0,7); ctx.fill();
+  ctx.fillStyle = '#ff7f3f'; ctx.beginPath();
+  ctx.moveTo(14,0); ctx.lineTo(24,3); ctx.lineTo(14,7); ctx.closePath(); ctx.fill();
+  if (bird.blush){
+    ctx.fillStyle = 'rgba(255,90,140,.75)';
+    ctx.beginPath(); ctx.ellipse(4,4,5,3,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-10,-2,4.5,3,0,0,7); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawMario(mx, my, torsoAngle, armUp, legBend){
+  ctx.save();
+  ctx.translate(mx, my);
+  ctx.strokeStyle = '#2b4bd6'; ctx.lineWidth = 8; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-14, 10 - legBend*6); ctx.lineTo(-16, 22); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(4,0);  ctx.lineTo(14, 10 - legBend*6);  ctx.lineTo(16, 22); ctx.stroke();
+  ctx.fillStyle = '#7b3f00';
+  ctx.beginPath(); ctx.ellipse(-18,24,8,5,0,0,7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(18,24,8,5,0,0,7); ctx.fill();
+
+  ctx.rotate(-torsoAngle);
+  ctx.fillStyle = '#2b4bd6';
+  ctx.fillRect(-11,-26,22,26);
+  ctx.fillStyle = '#e3242b';
+  ctx.fillRect(-11,-34,22,10);
+  ctx.fillStyle = '#e3242b'; ctx.fillRect(-9,-30,5,10); ctx.fillRect(4,-30,5,10);
+  ctx.fillStyle = '#ffd93d'; ctx.fillRect(-7,-20,4,4); ctx.fillRect(3,-20,4,4);
+  ctx.strokeStyle = '#e3242b'; ctx.lineWidth = 7;
+  const aA = armUp ? -1 : 1;
+  ctx.beginPath(); ctx.moveTo(-11,-28); ctx.lineTo(-22,-28 - aA*(armUp?14:-8)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(11,-28);  ctx.lineTo(22,-28 - (armUp?14:-8)); ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(-22,-28 - aA*(armUp?14:-8),4.5,0,7); ctx.fill();
+  ctx.beginPath(); ctx.arc(22,-28 - (armUp?14:-8),4.5,0,7); ctx.fill();
+  ctx.fillStyle = '#ffcf9e';
+  ctx.beginPath(); ctx.arc(0,-44,12,0,7); ctx.fill();
+  ctx.fillStyle = '#4a2f1a'; ctx.fillRect(-7,-41,14,3.5);
+  ctx.fillStyle = '#ffb98a'; ctx.beginPath(); ctx.arc(0,-42,3.5,0,7); ctx.fill();
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(-4,-47,1.8,0,7); ctx.fill();
+  ctx.beginPath(); ctx.arc(4,-47,1.8,0,7); ctx.fill();
+  ctx.fillStyle = '#e3242b';
+  ctx.beginPath(); ctx.arc(0,-50,12,Math.PI,0); ctx.fill();
+  ctx.fillRect(-13,-52,26,5);
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0,-53,4,0,7); ctx.fill();
+  ctx.fillStyle = '#e3242b'; ctx.font='bold 6px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('S', 0, -51);
+  ctx.restore();
+}
+
+/* =============== PARTICLES =============== */
+function spawnFirework(){
+  const fx = 60+Math.random()*(W-120), fy = 80+Math.random()*260;
+  const hue = Math.floor(Math.random()*360);
+  for (let i=0;i<38;i++){
+    const a = (i/38)*Math.PI*2, sp = 2+Math.random()*2.6;
+    parts.push({x:fx,y:fy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:60+Math.random()*30,
+                color:`hsl(${hue},95%,${60+Math.random()*20}%)`, type:'fw'});
+  }
+  sfxPoint();
+}
+function burstConfetti(){
+  for (let i=0;i<120;i++){
+    parts.push({x:Math.random()*W, y:-10-Math.random()*200, vx:(Math.random()-.5)*1.5,
+                vy:1+Math.random()*2.5, life:400, type:'cf',
+                color:`hsl(${Math.random()*360},90%,60%)`, w:4+Math.random()*5, r:Math.random()*7});
+  }
+}
+function spawnHeart(x,y){
+  parts.push({x, y, vx:(Math.random()-.5)*.8, vy:-1-Math.random(), life:80, type:'ht',
+              s:8+Math.random()*8});
+}
+function drawHeartShape(x,y,s,alpha){
+  ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = '#ff4f8b';
+  ctx.translate(x,y); ctx.scale(s/16,s/16);
+  ctx.beginPath();
+  ctx.moveTo(0,5);
+  ctx.bezierCurveTo(-9,-4,-4,-12,0,-6);
+  ctx.bezierCurveTo(4,-12,9,-4,0,5);
+  ctx.fill(); ctx.restore();
+}
+function updateParticles(){
+  for (let i=parts.length-1;i>=0;i--){
+    const p = parts[i];
+    p.x += p.vx; p.y += p.vy; p.life--;
+    if (p.type==='fw'){ p.vy += 0.045; p.vx *= .985; p.vy *= .985; }
+    if (p.type==='cf'){ p.r += 0.15; if (p.y > H+10) p.y = -10; }
+    if (p.life<=0){ parts.splice(i,1); continue; }
+    if (p.type==='fw'){
+      ctx.globalAlpha = Math.min(1,p.life/40);
+      ctx.fillStyle = p.color; ctx.fillRect(p.x,p.y,3,3); ctx.globalAlpha=1;
+    } else if (p.type==='cf'){
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.w/2,-p.w/2,p.w,p.w*0.6); ctx.restore();
+    } else if (p.type==='ht'){
+      drawHeartShape(p.x,p.y,p.s, Math.min(1,p.life/40));
+    }
+  }
+}
+
+/* =============== CUTSCENE TEXT =============== */
+const POEM =
+  `Tiya, my sunshine, my sky of blue,<br>` +
+  `no level, no world means a thing without you.<br>` +
+  `I stumbled, I goofed, I made you frown —<br>` +
+  `but you're still the best thing in this whole town.<br><br>` +
+  `Your smile is the melody my mornings play,<br>` +
+  `your laugh is what carries me through every day.<br>` +
+  `So here is my sorry, wrapped up in this game,<br>` +
+  `yours always — Sreedev, your fool, all the same.<br><br>` +
+  `<span class="big">I love you, Tiya ❤️</span>`;
+
+function speech(html){
+  const s = $('speech'); s.innerHTML = html; s.classList.remove('hidden');
+}
+
+/* =============== MAIN LOOP =============== */
+let deadAt = 0;
+function tick(){
+  frames++;
+  drawBackground();
+
+  if (state === 'play'){
+    bird.vy += GRAV; bird.y += bird.vy;
+    bird.rot = Math.max(-0.5, Math.min(1.1, bird.vy * 0.06));
+    bird.wing += 0.35;
+    for (const p of pipes) p.x -= SPEED;
+    drawPipes(); drawBird();
+
+    for (const p of pipes){
+      if (!p.passed && p.x + PIPE_W < bird.x){ p.passed = true; score++; sfxPoint();
+        $('hud').textContent = '💛 ' + score + ' / ' + TOTAL; }
+      const rx = bird.x, ry = bird.y, rr = bird.r - 4;
+      if (rx + rr > p.x && rx - rr < p.x + PIPE_W){
+        if (ry - rr < p.cy - GAP/2 || ry + rr > p.cy + GAP/2){ die(); }
+      }
+    }
+    if (bird.y + bird.r > H - 70 || bird.y < -30) die();
+
+    if (score >= TOTAL && state==='play'){
+      state = 'fireworks'; cutTimer = 0; parts = [];
+      $('hud').classList.add('hidden');
+      winMusic();
+      speech('<span class="big">🎉 LEVEL 1 COMPLETE! 🎉</span><br>You did it, Tiya! You WIN! 🏆');
+    }
+  }
+  else if (state === 'dead'){
+    drawPipes(); drawBird();
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#fff'; ctx.textAlign='center';
+    ctx.font = 'bold 30px sans-serif'; ctx.fillText('Oops! 😅', W/2, 280);
+    ctx.font = '18px sans-serif'; ctx.fillText('Tap anywhere to try again 💛', W/2, 318);
+  }
+  else if (state === 'fireworks'){
+    cutTimer++;
+    bird.wing += 0.3;
+    bird.y = 300 + Math.sin(frames*0.06)*10; bird.rot = 0;
+    if (cutTimer % 22 === 0 && cutTimer < 200) spawnFirework();
+    updateParticles();
+    drawBird();
+    if (cutTimer === 210){ nightBg = true; toast('✨ A special guest is arriving… ✨', 1500); }
+    if (cutTimer > 260){
+      state = 'mario'; cutStep = 0; cutTimer = 0;
+      mario.situp = 0; mario.phase = 0; mario.t = 0;
+      $('speech').classList.add('hidden');
+    }
+  }
+  else if (state === 'mario'){
+    cutTimer++;
+    bird.x = 90; bird.y = H - 130 + Math.sin(frames*0.08)*6; bird.rot = 0; bird.wing += 0.25;
+    updateParticles();
+    drawBird();
+
+    const mx = 265, my = H - 96;
+    if (cutStep === 0){
+      mario.x = Math.max(mx, W + 40 - cutTimer*2.4);
+      drawMario(mario.x, my, 0, false, 0);
+      if (mario.x <= mx){ cutStep = 1; cutTimer = 0;
+        speech('It\'s-a me! 👋 Sreedev sent me…<br>Watch! I do <b>5 sit-ups</b> as punishment for him!'); }
+    }
+    else if (cutStep === 1){
+      mario.t += 0.045;
+      const ang = (Math.PI/2.2) * (0.5 - 0.5*Math.cos(mario.t*2));
+      drawMario(mx, my, (Math.PI/2.2) - ang, false, 1);
+      const done = Math.min(5, Math.floor(mario.t / Math.PI));
+      if (done !== mario.situp){ mario.situp = done; sfxFlap();
+        if (done>0 && done<=5) speech('Sit-up <b>'+done+' / 5</b>! 💪 Hup!'); }
+      if (mario.situp >= 5){ cutStep = 2; cutTimer = 0;
+        speech('<span class="big">SORRY, TIYA 🥺🙏</span><br>Sreedev is really, truly sorry.'); }
+    }
+    else if (cutStep === 2){
+      drawMario(mx, my, 0, true, 0);
+      if (cutTimer > 170){ cutStep = 3; cutTimer = 0; speech(POEM); }
+    }
+    else if (cutStep === 3){
+      drawMario(mx, my, 0, false, 0);
+      if (cutTimer > 60 && cutTimer % 30 === 0) spawnHeart(mx + (Math.random()-.5)*80, my - 90);
+      if (cutTimer > 540){ state = 'blush'; cutTimer = 0; bird.blush = true; }
+    }
+  }
+  else if (state === 'blush'){
+    cutTimer++;
+    bird.x = 90; bird.y = H - 130 + Math.sin(frames*0.08)*6; bird.wing += 0.25;
+    drawMario(265, H - 96, 0, false, 0);
+    if (cutTimer % 18 === 0) spawnHeart(bird.x + (Math.random()-.5)*40, bird.y - 25);
+    updateParticles();
+    drawBird();
+    if (cutTimer === 90){
+      speech('Awww… 😊 the birdie is blushing!<br><b>So Tiya… what do you say?</b>');
+      $('choice').classList.remove('hidden');
+      state = 'choice';
+    }
+  }
+  else if (state === 'choice'){
+    bird.x = 90; bird.y = H - 130 + Math.sin(frames*0.08)*6; bird.wing += 0.25;
+    drawMario(265, H - 96, 0, false, 0);
+    if (frames % 20 === 0) spawnHeart(bird.x + (Math.random()-.5)*40, bird.y - 25);
+    updateParticles();
+    drawBird();
+  }
+  else if (state === 'end'){
+    cutTimer++;
+    bird.x = 130; bird.blush = true;
+    bird.y = H - 150 + Math.sin(frames*0.15)*14; bird.wing += 0.45;
+    const mx = 265, my = H - 96 - Math.abs(Math.sin(cutTimer*0.15))*26;
+    const armUp = Math.sin(cutTimer*0.3) > 0;
+    ctx.save();
+    ctx.translate(mx,0); ctx.rotate(Math.sin(cutTimer*0.15)*0.12); ctx.translate(-mx,0);
+    drawMario(mx, my, 0, armUp, 0);
+    ctx.restore();
+    if (cutTimer % 30 === 0) spawnHeart(Math.random()*W, H - 200 - Math.random()*150);
+    updateParticles();
+    drawBird();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,.95)';
+    ctx.font = 'bold 30px Comic Sans MS, sans-serif';
+    ctx.fillText('YAAAY! 🎊', W/2, 120);
+    ctx.font = 'bold 22px Comic Sans MS, sans-serif';
+    ctx.fillText('Thank you, Tiya! ❤️', W/2, 158);
+    ctx.font = 'bold 18px Comic Sans MS, sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Sreedev ❤ Tiya — forever', W/2, 192);
+    ctx.font = 'bold 26px Comic Sans MS, sans-serif';
+    ctx.fillText('~ THE END ~', W/2, H/2 + 20);
+  }
+  else {
+    drawBird();
+    bird.y = 300 + Math.sin(frames*0.05)*12; bird.wing += 0.2;
+  }
+
+  requestAnimationFrame(tick);
+}
+function die(){
+  if (state !== 'play') return;
+  state = 'dead'; deadAt = frames; sfxHit();
+}
+resetLevel();
+tick();
+</script>
+</body>
+</html>
